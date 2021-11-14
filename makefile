@@ -15,8 +15,11 @@ GOGET=$(GOCMD) get
 BINARY_FOLDER=build/
 
 BINARY_NAME=ipscan
+
 BINARY_UNIX=$(BINARY_FOLDER)$(BINARY_NAME)
-BINERY_WIN=$(BINARY_FOLDER)$(BINARY_NAME).exe
+BINERY_WIN32=$(BINARY_FOLDER)$(BINARY_NAME)_32.exe
+BINERY_WIN64=$(BINARY_FOLDER)$(BINARY_NAME)_64.exe
+
 SOURCE_CMD=cmd/client
 
 all: test build
@@ -55,12 +58,16 @@ stop-db:
 	docker stop mongodb && docker rm mongodb	
 
 # Cross compilation
-build-ubuntu:
-	GOOS=linux GARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
-build-arm:
-	GOOS=linux GOARCH=arm GOARM=5 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
-build-win:
-	GOOS=windows GOARCH=386 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
+#build-ubuntu:
+#	GOOS=linux GARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
+#build-arm:
+#	GOOS=linux GOARCH=arm GOARM=5 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
+build-win32:
+	GOOS=windows GOARCH=386 $(GOBUILD) -o $(BINARY_WIN32) $(SOURCE_CMD)/main.go
+build-win64:
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BINARY_WIN64) $(SOURCE_CMD)/main.go
+build-mac:
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
 
 
 install:
