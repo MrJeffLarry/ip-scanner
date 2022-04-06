@@ -182,7 +182,6 @@ func main() {
 	var ipRange = flag.String("ip", "192.168.1.x", "IP Range")
 	var ports = flag.String("p", "80", "Ports to scan, example: 80,81")
 	var timeout = flag.Int("t", 5, "Timeout in sec")
-	//	var help = flag.Bool("help", false, "Display help page")
 
 	flag.Parse()
 
