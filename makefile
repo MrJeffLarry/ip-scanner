@@ -67,7 +67,9 @@ build-win32:
 build-win64:
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -o $(BINARY_WIN64) $(SOURCE_CMD)/main.go
 build-mac:
-	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX) $(SOURCE_CMD)/main.go
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX)_mac $(SOURCE_CMD)/main.go
+build-linux:
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -o $(BINARY_UNIX)_linux $(SOURCE_CMD)/main.go
 
 
 install:

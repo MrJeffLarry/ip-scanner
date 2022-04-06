@@ -40,12 +40,14 @@ jobs:
         run: |
           make build-mac
           make build-win64
+          make build-linux
 
       - name: Zip files
         run: |
           mkdir -p ./tmp
           cp ./build/ipscan_64.exe ./tmp/ipscan_64.exe
-          cp ./build/ipscan ./tmp/ipscan
+          cp ./build/ipscan_linux ./tmp/ipscan_linux
+          cp ./build/ipscan_mac ./tmp/ipscan_mac
           zip -r -j ./build/ip-scanner_${{ steps.get_version.outputs.VERSION }}.zip ./tmp
 
       - name: Create Release
