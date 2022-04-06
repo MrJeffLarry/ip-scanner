@@ -1,19 +1,24 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 type Device struct {
 	IP         string
+	EndIP      int
 	Port       []string
 	PortOK     bool
 	PingTimeMs int64
+	Hostname   string
 }
 
 type DevicePool struct {
@@ -30,21 +35,25 @@ type DevicePool struct {
 //
 //
 //
-func (d *DevicePool) ping(ip string, c chan int) {
+func (d *DevicePool) ping(ip string, endIP int, c chan int) {
 	var ok bool
 	var Ms int64
 	var beforeTime int64
 	var afterTime int64
 
 	dev := Device{
-		IP:         ip,
+		IP:         ip + strconv.Itoa(endIP),
+		EndIP:      endIP,
 		PingTimeMs: int64(d.OptionTimeOut),
+	}
+
+	if hostname, err := net.LookupAddr(dev.IP); err == nil {
+		dev.Hostname = hostname[0]
 	}
 
 	for _, port := range d.OptionPorts {
 		beforeTime = time.Now().UnixMilli()
-
-		conn, err := net.DialTimeout("tcp", ip+":"+port, time.Duration(d.OptionTimeOut)*time.Second)
+		conn, err := net.DialTimeout("tcp", dev.IP+":"+port, time.Duration(d.OptionTimeOut)*time.Second)
 		if err != nil {
 			if strings.Contains(err.Error(), "connect: connection refused") {
 				ok = true
@@ -109,15 +118,45 @@ func (d *DevicePool) argParse() {
 	}
 }
 
+func (d *DevicePool) flagParse(ipRanges *string, ports *string) {
+
+	d.OptionIPBase = strings.Replace(*ipRanges, "x", "", 1)
+	fmt.Println("Scan ip range:", d.OptionIPBase+"x")
+
+	d.OptionPorts = strings.Split(*ports, ",")
+	fmt.Println("Scan ports:", d.OptionPorts)
+}
+
 //
 //
 //
 //
 func (d *DevicePool) displayOK() {
-	fmt.Println("************* Device found list **************")
-	for _, dev := range d.DeviceOK {
-		fmt.Println(dev.IP, dev.Port, dev.PingTimeMs, "ms")
+	var deviceArray []Device
+
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"IP", "Ping", "Hostname", "Ports"})
+
+	deviceArray = d.DeviceOK
+
+	for i := 0; i < len(deviceArray)-1; i++ {
+		for j := 0; j < len(deviceArray)-i-1; j++ {
+			if deviceArray[j].EndIP > deviceArray[j+1].EndIP {
+				deviceArray[j], deviceArray[j+1] = deviceArray[j+1], deviceArray[j]
+			}
+		}
 	}
+
+	for _, dev := range d.DeviceOK {
+		t.AppendRow(table.Row{
+			dev.IP,
+			strconv.FormatInt(dev.PingTimeMs, 10) + " ms",
+			dev.Hostname,
+			dev.Port})
+		t.AppendSeparator()
+	}
+	t.Render()
 	fmt.Println("Found:", len(d.DeviceOK), "devices")
 }
 
@@ -138,19 +177,25 @@ func (d *DevicePool) displayFail() {
 //
 //
 func main() {
+	var threads int
+	var threadsDone int
+	var ipRange = flag.String("ip", "192.168.1.x", "IP Range")
+	var ports = flag.String("p", "80", "Ports to scan, example: 80,81")
+	var timeout = flag.Int("t", 5, "Timeout in sec")
+	//	var help = flag.Bool("help", false, "Display help page")
+
+	flag.Parse()
+
 	devPool := &DevicePool{
-		OptionTimeOut: 5,
+		OptionTimeOut: *timeout,
 	}
 	c := make(chan int)
-	threads := 0
-	threadsDone := 0
 
-	devPool.argParse()
+	devPool.flagParse(ipRange, ports)
 
 	for i := 1; i < 255; i++ {
-		ip := strconv.Itoa(i)
 		threads++
-		go devPool.ping(devPool.OptionIPBase+ip, c)
+		go devPool.ping(devPool.OptionIPBase, i, c)
 	}
 
 	// Wait for all rutines to complete
@@ -166,6 +211,4 @@ func main() {
 	if devPool.OptionDisplayFail {
 		devPool.displayFail()
 	}
-
-	fmt.Println("************* Done **************")
 }

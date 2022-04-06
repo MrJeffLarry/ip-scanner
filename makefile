@@ -50,7 +50,7 @@ clean:
 	$(GOCLEAN)
 	rm -r build
 run:
-	$(GOCMD) run $(SOURCE_CMD)/main.go 192.168.1.x
+	$(GOCMD) run $(SOURCE_CMD)/main.go
 
 run-db:
 	docker start mongodb || docker run --name mongodb -v ~/Docker/mongodb:/data/db -p 27017:27017 -d mongo
