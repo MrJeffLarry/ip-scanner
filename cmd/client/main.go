@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/mdns"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
@@ -29,26 +30,33 @@ type DevicePool struct {
 	OptionPorts           []string
 	DeviceOK              []Device
 	DeviceFail            []Device
+	MDNSEntries           []mdns.ServiceEntry
 }
 
-//
-//
-//
-//
-func (d *DevicePool) ping(ip string, endIP int, c chan int) {
+func (d *DevicePool) ping(pool *DevicePool, endIP int, c chan int) {
 	var ok bool
 	var Ms int64
 	var beforeTime int64
 	var afterTime int64
 
 	dev := Device{
-		IP:         ip + strconv.Itoa(endIP),
+		IP:         pool.OptionIPBase + strconv.Itoa(endIP),
 		EndIP:      endIP,
 		PingTimeMs: int64(d.OptionTimeOut),
 	}
 
-	if hostname, err := net.LookupAddr(dev.IP); err == nil {
-		dev.Hostname = hostname[0]
+	hostname, _ := net.LookupAddr(dev.IP)
+
+	for _, h := range hostname {
+		if len(h) > 0 {
+			dev.Hostname = h
+		}
+	}
+
+	for _, entry := range pool.MDNSEntries {
+		if entry.AddrV4.String() == dev.IP {
+			dev.Hostname = entry.Name
+		}
 	}
 
 	for _, port := range d.OptionPorts {
@@ -79,10 +87,6 @@ func (d *DevicePool) ping(ip string, endIP int, c chan int) {
 	c <- 1
 }
 
-//
-//
-//
-//
 func (d *DevicePool) argParse() {
 	args := os.Args[1:]
 	if len(args) <= 1 {
@@ -127,10 +131,6 @@ func (d *DevicePool) flagParse(ipRanges *string, ports *string) {
 	fmt.Println("Scan ports:", d.OptionPorts)
 }
 
-//
-//
-//
-//
 func (d *DevicePool) displayOK() {
 	var deviceArray []Device
 
@@ -160,10 +160,6 @@ func (d *DevicePool) displayOK() {
 	fmt.Println("Found:", len(d.DeviceOK), "devices")
 }
 
-//
-//
-//
-//
 func (d *DevicePool) displayFail() {
 	fmt.Println("************* Device not found list **************")
 	for _, dev := range d.DeviceFail {
@@ -172,10 +168,6 @@ func (d *DevicePool) displayFail() {
 	fmt.Println("Not Found:", len(d.DeviceFail), "devices")
 }
 
-//
-//
-//
-//
 func main() {
 	var threads int
 	var threadsDone int
@@ -187,14 +179,31 @@ func main() {
 
 	devPool := &DevicePool{
 		OptionTimeOut: *timeout,
+		MDNSEntries:   []mdns.ServiceEntry{},
 	}
 	c := make(chan int)
 
 	devPool.flagParse(ipRange, ports)
 
+	entries := make(chan *mdns.ServiceEntry, 1)
+
+	if err := mdns.Query(&mdns.QueryParam{
+		Timeout:     time.Second * 5,
+		Entries:     entries,
+		DisableIPv6: true,
+		Service:     "_services._dns-sd._udp",
+		Domain:      "local",
+	}); err != nil {
+		close(entries)
+	}
+
+	for entry := range entries {
+		devPool.MDNSEntries = append(devPool.MDNSEntries, *entry)
+	}
+
 	for i := 1; i < 255; i++ {
 		threads++
-		go devPool.ping(devPool.OptionIPBase, i, c)
+		go devPool.ping(devPool, i, c)
 	}
 
 	// Wait for all rutines to complete
