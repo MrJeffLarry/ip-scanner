@@ -1,6 +1,6 @@
 module ip-scanner
 
-go 1.17
+go 1.25.0
 
 require (
 	github.com/hashicorp/mdns v1.0.5
@@ -12,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.54 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
 )
